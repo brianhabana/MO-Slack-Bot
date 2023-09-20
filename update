@@ -1,0 +1,207 @@
+function sendSlackMessages() {
+  const url = "https://hooks.slack.com/services/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";
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("test");
+  const scriptUrl = ScriptApp.getService().getUrl(); // Get the script URL
+
+  // Get all post-drop data
+  const data = sheet.getDataRange().getValues();
+
+  const usernameToUserId = {
+    "Brian Habana": "U039CSVDJSF",
+    "Lauryn Lawton": "U03TAH03MAB",
+    "Aissa Craig": "U02HAQ9ED17",
+    // Add more mappings as needed
+  };
+
+  const today = new Date(); // Get the current date
+
+  data.forEach((row, rowIndex) => {
+    if (rowIndex === 0) {
+      return; // Skip the header row
+    }
+
+    const username = row[7];
+    if (!username) {
+      return; // Skip if username is empty
+    }
+
+    const slackUserId = usernameToUserId[username];
+    const hyperlink = "<https://docs.google.com/spreadsheets/d/1BfZIShAzcRXpVgaxFspHacsX_UvBucZk-XMHWFEcfx4/edit#gid=630373918|>";
+    const column20Value = row[19];
+    const column21Value = row[20];
+    const column22Value = row[21];
+    const column1Value = row[0];
+    const column2Value = row[1];
+
+    if (isPostDropPlannedConditionMet(column20Value, column21Value, column22Value, slackUserId, today)) {
+      let columnToUpdate = 20;
+      if (column20Value < today) {
+        columnToUpdate = 21; // Update to a different column if the condition is met
+      }
+
+      const message = createPostDropPlannedMessage(slackUserId, column1Value, column2Value, hyperlink, rowIndex, columnToUpdate);
+      sendMessage(url, message);
+    }
+
+    if (isRevisedPostDropConditionMet(column21Value, column22Value, slackUserId, today)) {
+      let columnToUpdate = 21;
+      if (column21Value < today) {
+        columnToUpdate = 22; // Update to a different column if the condition is met
+      }
+
+      const message = createRevisedPostDropMessage(slackUserId, column1Value, column2Value, hyperlink, rowIndex, columnToUpdate);
+      sendMessage(url, message);
+    }
+  });
+
+  // Call the test function after sending Slack messages
+  testSlackIntegration();
+}
+
+function isPostDropPlannedConditionMet(column20Value, column21Value, column22Value, slackUserId, today) {
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+
+  return (
+    column20Value instanceof Date &&
+    column20Value < todayMidnight &&
+    !areDatesEqual(column20Value, todayMidnight) && // Exclude today
+    column21Value === "" &&
+    column22Value === "" &&
+    slackUserId
+  );
+}
+
+function isRevisedPostDropConditionMet(column21Value, column22Value, slackUserId, today) {
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+
+  return (
+    column21Value instanceof Date &&
+    column21Value < todayMidnight &&
+    !areDatesEqual(column21Value, todayMidnight) && // Exclude today
+    column22Value === "" &&
+    slackUserId
+  );
+}
+
+function areDatesEqual(date1, date2) {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
+}
+
+function createPostDropPlannedMessage(slackUserId, column1Value, column2Value, hyperlink, rowIndex, columnToUpdate) {
+  const message = {
+    text: `FOREIGN CONTAMINENT! <@${slackUserId}>! :Robot_Face: You have a post drop planned in the past (${column1Value} - ep ${column2Value}) with no revised date. Would you like to update the date to today? ${hyperlink}`,
+    link_names: 1,
+    attachments: [
+      {
+        text: "Choose an action:",
+        fallback: "You are unable to choose an action",
+        callback_id: "date_update",
+        actions: [
+          {
+            name: "update_date",
+            text: "Update Date",
+            type: "button",
+            value: `${rowIndex},${columnToUpdate}`, // Pass the row and column values as a string
+          },
+          {
+            name: "cancel",
+            text: "Cancel",
+            type: "button",
+            style: "danger",
+            value: "cancel",
+          },
+        ],
+      },
+    ],
+  };
+
+  // Add row and column properties to the message payload
+  message.row = rowIndex;
+  message.column = columnToUpdate;
+
+  return message;
+}
+
+function createRevisedPostDropMessage(slackUserId, column1Value, column2Value, hyperlink, rowIndex, columnToUpdate) {
+  const message = {
+    text: `FOREIGN CONTAMINENT! <@${slackUserId}>! :Robot_Face: You have a revised post drop date in the past (${column1Value} - ep ${column2Value}) with no post drop actual date. Would you like to update the date to today? ${hyperlink}`,
+    link_names: 1,
+    attachments: [
+      {
+        text: "Choose an action:",
+        fallback: "You are unable to choose an action",
+        callback_id: "date_update",
+        actions: [
+          {
+            name: "update_date",
+            text: "Update Date",
+            type: "button",
+            value: `${rowIndex},${columnToUpdate}`, // Pass the row and column values as a string
+          },
+          {
+            name: "cancel",
+            text: "Cancel",
+            type: "button",
+            style: "danger",
+            value: "cancel",
+          },
+        ],
+      },
+    ],
+  };
+
+  // Add row and column properties to the message payload
+  message.row = rowIndex;
+  message.column = columnToUpdate;
+
+  return message;
+}
+
+function sendMessage(url, payload) {
+  const params = {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify(payload)
+  };
+
+  const sendMsg = UrlFetchApp.fetch(url, params);
+  const respCode = sendMsg.getResponseCode();
+  Logger.log(sendMsg);
+  Logger.log(respCode);
+}
+
+function testSlackIntegration() {
+  const url = "https://hooks.slack.com/services/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";
+  const message = {
+    text: "This is a test message from your Google Apps Script!",
+  };
+
+  sendMessage(url, message);
+}
+
+function doGet(e) {
+  const rowAndColumn = e.parameter.row_column;
+
+  if (!rowAndColumn || !/^\d+,\d+$/.test(rowAndColumn)) {
+    return ContentService.createTextOutput("Invalid parameters. Please provide valid row_column values (e.g., '2,1').");
+  }
+
+  const [row, column] = rowAndColumn.split(",").map(value => parseInt(value, 10));
+
+  if (isNaN(row) || isNaN(column) || row < 1 || column < 1) {
+    return ContentService.createTextOutput("Invalid parameters. Please provide valid row and column values.");
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("test");
+  const cellToUpdate = sheet.getRange(row, column);
+  const today = new Date();
+  cellToUpdate.setValue(today);
+
+  return ContentService.createTextOutput(`Updated cell (${row}, ${column}) with the current date: ${today}`);
+}
