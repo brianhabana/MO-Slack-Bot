@@ -1,5 +1,5 @@
 function sendSlackMessages() {
-  const url = "https://hooks.slack.com/services/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";
+  const url = "hide webhook";
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("test");
   const data = sheet.getDataRange().getValues(); // Get all post-drop data
 
