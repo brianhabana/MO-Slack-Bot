@@ -1,5 +1,5 @@
 function sendSlackMessages() {
-  const url = "https://hooks.slack.com/services/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";
+  const url = "hide";
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("test");
   const scriptUrl = ScriptApp.getService().getUrl(); // Get the script URL
 
